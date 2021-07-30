@@ -1,4 +1,6 @@
-`░▒▓ horrors ▓▒░ A micro-framework for writing attack scenarios starring multiple vulnerabilities`
+# horrors
+
+> A micro-framework for writing attack scenarios starring multiple vulnerabilities.
 
 ## About
 
