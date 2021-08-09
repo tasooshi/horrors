@@ -1,9 +1,6 @@
 import re
 
-from horrors import (
-    events,
-    logging,
-)
+from horrors import logging
 
 
 class Trigger:
@@ -12,7 +9,7 @@ class Trigger:
         self.condition = condition
         self.bucket = bucket
 
-    def evaluate(self, data, event):
+    async def evaluate(self, scenario, data, state):
         logging.debug(f'Evaluating `{self.condition}` with data: {data}')
 
 
@@ -22,24 +19,27 @@ class DataMatch(Trigger):
         super().__init__(*args, **kwargs)
         self.regex = re.compile(self.condition)
 
-    async def evaluate(self, data, event):
-        super().evaluate(data, event)
+    async def evaluate(self, scenario, data, state):
+        await super().evaluate(scenario, data, state)
         match = self.regex.match(data)
         if match:
-            logging.debug(f'Condition `{self.condition}` met with data: {data}')
+            logging.debug(f'Condition `{self.condition}` met')
             if self.bucket:
-                events.Event.store[self.bucket] = match.groups()
-                logging.debug(f'Bucket `{self.bucket}` contents: {events.Event.store[self.bucket]}')
-            await events.Event.send(event)
+                scenario.context[self.bucket] = match.groups()
+                logging.debug(f'Bucket `{self.bucket}` contents: {scenario.context[self.bucket]}')
+            logging.debug(f'Setting state to `{state}`')
+            scenario.state = state
+        else:
+            logging.debug(f'Condition `{self.condition}` NOT met')
 
 
 class DataContains(Trigger):
 
-    async def evaluate(self, data, event):
-        super().evaluate(data, event)
+    async def evaluate(self, scenario, data, state):
+        await super().evaluate(scenario, data, state)
         if self.condition in data:
             logging.debug(f'Condition `{self.condition}` met with data: {data}')
-            await events.Event.send(event)
+            scenario.state = state
 
 
 class PathContains(DataContains):

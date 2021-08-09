@@ -24,6 +24,7 @@ class Service:
         if self.port is None:
             raise RuntimeError('Missing `port` attribute')
         self.triggers = dict()
+        self.scenario = None
 
     async def start_server(self):
         server = await asyncio.start_server(self.handler, self.address, self.port)
@@ -31,17 +32,19 @@ class Service:
         logging.info(f'Serving `{type(self).__name__}` on {addr[0]}:{addr[1]}')
         return server
 
-    def send(self, event, when=None):
+    def set_state(self, state, when=None):
         if when is None:
             raise RuntimeError('Missing `when` keyword argument')
-        self.triggers[type(when).__name__] = (event, when)
+        self.triggers[type(when).__name__] = (state, when)
 
     async def process(self, cls, data):
         if cls.__name__ in self.triggers:
-            event, trigger = self.triggers[cls.__name__]
-            await trigger.evaluate(data, event)
+            state, trigger = self.triggers[cls.__name__]
+            await trigger.evaluate(self.scenario, data, state)
 
-    def _spawn(self, loop):
+    def _spawn(self, scenario, loop):
+        self.loop = loop
+        self.scenario = scenario
         loop.run_until_complete(self.start_server())
 
 
@@ -55,10 +58,11 @@ class FTPReader(Service):
         writer.write(b'220 ' + bytes(self.banner, 'latin-1') + b'\r\n')
         await writer.drain()
         while True:
-            line = await reader.readline()
-            if not line:
+            data = await reader.readline()
+            if not data:
                 break
-            data = line.decode()
+            data = data.decode()
+            await self.process(triggers.DataMatch, data)
             logging.debug(rf'Received:\r\n{data}')
             if data.startswith('USER'):
                 await self.process(triggers.UsernameContains, data)
@@ -69,17 +73,18 @@ class FTPReader(Service):
             elif data.startswith('SYST'):
                 writer.write(b'215 Windows_NT\r\n')
             elif data.startswith('RETR'):
-                await self.process(triggers.DataMatch, data)
-                writer.write(b'230 Continue\r\n')
+                writer.write(b'250 Continue\r\n')
             elif data.startswith('CWD'):
-                await self.process(triggers.DataMatch, data)
                 writer.write(b'250 Okay\r\n')
+            elif data.startswith(('TYPE', 'PASV', 'EPSV', 'EPRT', 'PORT', 'LIST')):
+                writer.write(b'200 Command OK\r\n')
             elif data.startswith('QUIT'):
                 writer.write(b'221 Goodbye!\r\n')
                 await writer.drain()
                 break
             await writer.drain()
         writer.close()
+        await writer.wait_closed()
 
 
 class HTTPStatic(Service):
@@ -137,25 +142,31 @@ class HTTPStatic(Service):
         writer.write(bytes(full_response, 'latin-1'))
         await writer.drain()
         writer.close()
+        await writer.wait_closed()
         logging.debug(f'Sent response:\r\n{full_response}')
 
     async def handler(self, reader, writer):
         request = list()
         while True:
-            line = await reader.readline()
-            if not line or line == b'\r\n':
+            data = await reader.readline()
+            if not data or data == b'\r\n':
                 break
             else:
-                data = line.decode('latin-1').rstrip()
-                request.append(data)
+                data = data.decode()
+                await self.process(triggers.DataMatch, data)
                 logging.debug(rf'Received:\r\n{data}')
-        path = request[0].split(' ')[1]
-        await self.process(triggers.PathContains, path)
+                request.append(data)
         try:
-            content = self.routes[path]
-        except KeyError:
-            await self.send_content(writer, content=self.template_404, status_code=404)
+            path = request[0].split(' ')[1]
+        except IndexError:
+            await self.send_content(writer, content='Error!', status_code=500)
         else:
-            if callable(content):
-                content = content(self)
-            await self.send_content(writer, content)
+            await self.process(triggers.PathContains, path)
+            try:
+                content = self.routes[path]
+            except KeyError:
+                await self.send_content(writer, content=self.template_404, status_code=404)
+            else:
+                if callable(content):
+                    content = content(self)
+                await self.send_content(writer, content)

