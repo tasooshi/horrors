@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>I am Victim</title>
+</head>
+<body>
+    <h1>Victim Ltd.</h1>
+    <hr>
+    <h3>This is the original login page!</h3>
+    <div id="message">
+        <script type="text/javascript">
+            // This script is vulnerable to a DOM-based XSS.
+            const params = new URLSearchParams(location.search);
+            const message = params.get('message');
+            if (message != null) {
+                document.write(message);
+            } else {
+                document.write('Welcome!');
+            }
+        </script>
+    </div>
+    <form method="POST">
+        <input type="text" name="username">
+        <input type="password" name="password">
+        <input type="submit" value="Log in">
+    </form>
+</body>
+</html>

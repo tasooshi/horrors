@@ -45,9 +45,9 @@ class Scenario:
             return False
 
     def spawn(self, service):
-        service._spawn(self, self.loop)
+        service._spawn(self, loop=self.loop)
 
-    def add(self, scene, when=STATE_CONTINUE):
+    def add_scene(self, scene, when=STATE_CONTINUE):
         self.waiting.append(self.wait_for(scene, when))
 
     def play(self):

