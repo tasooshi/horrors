@@ -5,14 +5,14 @@ import time
 from horrors import (
     logging,
     triggers,
+    services,
 )
-from horrors.services import SocketService
 
 
 __all__ = ['HTTPStatic']
 
 
-class HTTPStatic(SocketService):
+class HTTPStatic(services.Service):
 
     address = '0.0.0.0'
     port = 8888
@@ -20,8 +20,8 @@ class HTTPStatic(SocketService):
     banner = 'HTTPStatic'
     template_404 = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Page not found</title></head><body><h1>404 Not Found!</h1></body></html>'
 
-    def __init__(self, address=None, port=None):
-        super().__init__(address, port)
+    def __init__(self, scenario, address=None, port=None):
+        super().__init__(scenario, address, port)
         self.routes = dict()
         self.buffer = None
 

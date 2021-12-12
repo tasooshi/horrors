@@ -25,10 +25,10 @@ setup(
     license='GNU General Public License v3.0',
     url='https://github.com/tasooshi/horrors/',
     install_requires=(
+        'aiohttp==3.8.1',
         'beautifulsoup4==4.10.0',
         'Flask==2.0.2',
         'Flask-Cors==3.0.10',
-        'requests==2.26.0',
         'tinydb==4.5.2',
     ),
     classifiers=[

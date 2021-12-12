@@ -1,15 +1,14 @@
 from horrors import (
     logging,
     triggers,
+    services,
 )
-
-from horrors.services import SocketService
 
 
 __all__ = ['FTPReader']
 
 
-class FTPReader(SocketService):
+class FTPReader(services.Service):
 
     address = '0.0.0.0'
     port = 2121
