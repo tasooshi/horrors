@@ -9,6 +9,9 @@ import flask
 import flask_cors
 
 
+__all__ = ['HTTPFlask']
+
+
 class HTTPFlask(services.Service):
 
     address = '0.0.0.0'
@@ -16,10 +19,6 @@ class HTTPFlask(services.Service):
 
     def __init__(self, address=None, port=None, ssl_context=None):
         self.ssl_context = ssl_context
-        if port is None and self.ssl_context is None:
-            port = 80
-        else:
-            port = 443
         super().__init__(address, port)
         self.routes = dict()
         self.app = flask.Flask(__name__)

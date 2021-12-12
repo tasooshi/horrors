@@ -4,13 +4,22 @@ import tinydb
 from horrors.services.complete import http
 
 
+__all__ = ['HTTPCollector']
+
+
 class HTTPCollector(http.HTTPFlask):
 
+    address = '0.0.0.0'
+    port = 8888
     banner = 'HTTPCollector'
     template_200 = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>{banner}</title></head><body><pre>{content}</pre></body></html>'
     json_file = 'collected.json'
 
     def __init__(self, address=None, port=None, ssl_context=None):
+        if address is None:
+            address = self.address
+        if port is None:
+            port = self.port
         super().__init__(address, port, ssl_context)
         self.db = tinydb.TinyDB(self.json_file)
 

@@ -6,6 +6,9 @@ from horrors import (
 from horrors.services import SocketService
 
 
+__all__ = ['FTPReader']
+
+
 class FTPReader(SocketService):
 
     address = '0.0.0.0'

@@ -9,6 +9,9 @@ from horrors import (
 from horrors.services import SocketService
 
 
+__all__ = ['HTTPStatic']
+
+
 class HTTPStatic(SocketService):
 
     address = '0.0.0.0'
@@ -53,15 +56,18 @@ class HTTPStatic(SocketService):
         self.buffer.append('\r\n')
 
     async def send_content(self, writer, content='', status_code=200, content_type='text/html'):
+        if isinstance(content, str):
+            content = content.encode('latin-1')
         self.send_response(status_code)
         self.send_header('Server', self.banner)
         self.send_header('Date', self.date_time_string())
         self.send_header('Content-Type', content_type)
         self.send_header('Content-Length', str(len(content)))
         self.end_headers()
-        self.buffer.append(content)
         full_response = ''.join(self.buffer)
-        writer.write(bytes(full_response, 'latin-1'))
+        full_response = full_response.encode('latin-1')
+        full_response += content
+        writer.write(full_response)
         await writer.drain()
         writer.close()
         await writer.wait_closed()
@@ -91,4 +97,8 @@ class HTTPStatic(SocketService):
             else:
                 if callable(content):
                     content = content(self, request)
+                if isinstance(content, bytes):
+                    content_type = 'application/octet-stream'
+                else:
+                    content_type = 'text/html'
                 await self.send_content(writer, content)

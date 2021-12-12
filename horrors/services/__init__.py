@@ -48,9 +48,13 @@ class SocketService(Service):
         logging.info(f'Serving `{type(self).__name__}` on {addr[0]}:{addr[1]}')
         return server
 
-    def _spawn(self, scenario, loop=None):
-        if loop is None:
-            loop = asyncio.get_event_loop()
-        self.loop = loop
+    def _spawn(self, scenario):
         self.scenario = scenario
+        loop = asyncio.get_event_loop()
         loop.run_until_complete(self.start_server())
+
+
+from horrors.services.complete.http import *
+from horrors.services.simple.ftp import *
+from horrors.services.simple.http import *
+from horrors.services.utility.collector import *

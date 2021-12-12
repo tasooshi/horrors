@@ -2,7 +2,7 @@
 #######################################################################
 # License: GNU General Public License v3.0                            #
 # Homepage: https://github.com/tasooshi/horrors/                      #
-# Version: 0.3                                                        #
+# Version: 0.4                                                        #
 #######################################################################
 
 from distutils.core import setup
@@ -10,7 +10,7 @@ from distutils.core import setup
 
 setup(
     name='horrors',
-    version='0.3',
+    version='0.4',
     package_dir={'horrors': 'horrors'},
     packages=[
         'horrors',
@@ -24,6 +24,13 @@ setup(
     description='A micro-framework for writing attack scenarios starring multiple vulnerabilities',
     license='GNU General Public License v3.0',
     url='https://github.com/tasooshi/horrors/',
+    install_requires=(
+        'beautifulsoup4==4.10.0',
+        'Flask==2.0.2',
+        'Flask-Cors==3.0.10',
+        'requests==2.26.0',
+        'tinydb==4.5.2',
+    ),
     classifiers=[
         'Development Status :: 4 - Beta',
         'Topic :: Utilities',
