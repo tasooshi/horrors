@@ -69,8 +69,8 @@ class HTTPStatic(services.Service):
         full_response += content
         writer.write(full_response)
         await writer.drain()
+        writer.write_eof()
         writer.close()
-        await writer.wait_closed()
         logging.debug(f'Sent response:\r\n{full_response}')
 
     async def handler(self, reader, writer):

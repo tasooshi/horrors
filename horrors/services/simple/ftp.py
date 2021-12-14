@@ -43,5 +43,5 @@ class FTPReader(services.Service):
                 await writer.drain()
                 break
             await writer.drain()
+        writer.write_eof()
         writer.close()
-        await writer.wait_closed()
