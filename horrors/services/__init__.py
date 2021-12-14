@@ -17,19 +17,19 @@ class Service:
             raise RuntimeError('Missing `address` attribute')
         if self.port is None:
             raise RuntimeError('Missing `port` attribute')
-        self.triggers = dict()
+        self.events = dict()
         self.scenario = scenario
         self.scenario.register(self)
 
-    def set_event(self, state, when=None):
+    def add_event(self, scene, when=None):
         if when is None:
             raise RuntimeError('Missing `when` keyword argument')
-        self.triggers[type(when).__name__] = (state, when)
+        self.events[type(when).__name__] = (scene, when)
 
     def process(self, cls, data):
-        if cls.__name__ in self.triggers:
-            state, trigger = self.triggers[cls.__name__]
-            trigger.evaluate(self.scenario, data, state)
+        if cls.__name__ in self.events:
+            scene, event = self.events[cls.__name__]
+            event.evaluate(self.scenario, data, scene)
 
 
 from horrors.services.complete.http import *

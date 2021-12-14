@@ -1,6 +1,6 @@
 from horrors import (
     logging,
-    triggers,
+    events,
     services,
 )
 
@@ -22,13 +22,13 @@ class FTPReader(services.Service):
             if not data:
                 break
             data = data.decode()
-            self.process(triggers.DataMatch, data)
+            self.process(events.DataMatch, data)
             logging.debug(rf'Received:\r\n{data}')
             if data.startswith('USER'):
-                self.process(triggers.UsernameContains, data)
+                self.process(events.UsernameContains, data)
                 writer.write(b'331 Enter password\r\n')
             elif data.startswith('PASS'):
-                self.process(triggers.PasswordContains, data)
+                self.process(events.PasswordContains, data)
                 writer.write(b'250 Okay\r\n')
             elif data.startswith('SYST'):
                 writer.write(b'215 Windows_NT\r\n')

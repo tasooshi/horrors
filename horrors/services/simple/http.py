@@ -4,7 +4,7 @@ import time
 
 from horrors import (
     logging,
-    triggers,
+    events,
     services,
 )
 
@@ -81,7 +81,7 @@ class HTTPStatic(services.Service):
                 break
             else:
                 data = data.decode()
-                self.process(triggers.DataMatch, data)
+                self.process(events.DataMatch, data)
                 logging.debug(rf'Received:\r\n{data}')
                 request.append(data)
         try:
@@ -89,7 +89,7 @@ class HTTPStatic(services.Service):
         except IndexError:
             await self.send_content(writer, content='Error!', status_code=500)
         else:
-            self.process(triggers.PathContains, path)
+            self.process(events.PathContains, path)
             try:
                 content = self.routes[path]
             except KeyError:

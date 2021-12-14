@@ -13,28 +13,31 @@ class Scenario:
 
     def __init__(self, **context):
         self.context = context
-        self.waiting = list()
+        self.scenes = list()
         self.services = list()
         self.scene_index = self.SCENE_START
         self.state = self.scene_index
         self.http_kwargs = dict()
         self.http_headers = dict()
+        logging.init(logging.logging.INFO)
 
     def set_debug(self):
         logging.init(logging.logging.DEBUG)
 
-    def wait_for(self, func, state):
+    def watch_event(self, func, event):
         loop = asyncio.get_event_loop()
         @functools.wraps(func)
         async def wrapped(*args, **kwargs):
-            logging.info(f'Scene `{func.__name__}` is waiting for event `{state}`')
+            logging.info(f'Scene `{func.__name__}` is waiting for event `{event}`')
             while True:
                 logging.debug('Current state: ' + str(self.state))
-                if self.state == state:
+                if self.state == event:
                     result = await func(self)
                     logging.debug(f'Executed `{func.__name__}`')
-                    self.state = self.scene_index + 1
-                    return result
+                    if result:
+                        self.state = result
+                    else:
+                        self.state = self.scene_index + 1
                 else:
                     await asyncio.sleep(1)
         return wrapped
@@ -45,7 +48,7 @@ class Scenario:
     def set_headers(self, headers):
         self.http_headers = headers
 
-    async def background(self, func, *args, **kwargs):
+    async def job(self, func, *args, **kwargs):
         func_call = functools.partial(func, *args, **kwargs)
         loop = asyncio.get_event_loop()
         future = loop.run_in_executor(None, func_call)
@@ -79,8 +82,8 @@ class Scenario:
         if when is None:
             when = self.scene_index
             self.scene_index += 1
-        logging.debug('Scene {}, index/event: {}'.format(scene, when))
-        self.waiting.append(self.wait_for(scene, when))
+        logging.debug('Scene {}, event: {}'.format(scene, when))
+        self.scenes.append(self.watch_event(scene, when))
 
     async def main(self):
         self.scene_index = self.SCENE_START
@@ -94,8 +97,8 @@ class Scenario:
                 addr = server.sockets[0].getsockname()
                 logging.info(f'Serving `{type(self).__name__}` on {addr[0]}:{addr[1]}')
                 tasks.append(server.serve_forever())
-        for trigger in self.waiting:
-            tasks.append(trigger())
+        for scene in self.scenes:
+            tasks.append(scene())
         await asyncio.gather(*tasks)
 
     def play(self):

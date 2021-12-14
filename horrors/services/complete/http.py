@@ -2,7 +2,7 @@ import functools
 
 from horrors import (
     services,
-    triggers,
+    events,
 )
 
 import flask
@@ -25,9 +25,9 @@ class HTTPFlask(services.Service):
         self.app = flask.Flask(__name__)
         flask_cors.CORS(self.app)
 
-    def process_triggers(self):
-        self.process(triggers.PathContains, flask.request.path)
-        self.process(triggers.DataMatch, flask.request.data)
+    def process_events(self):
+        self.process(events.PathContains, flask.request.path)
+        self.process(events.DataMatch, flask.request.data)
 
     def add_route(self, route, methods, content):
         self.routes[route] = (methods, content)
@@ -40,7 +40,7 @@ class HTTPFlask(services.Service):
                 content = functools.partial(flask.render_template_string, content)
                 content.__name__ = name
             self.app.add_url_rule(route, name, content, methods=methods)
-        self.app.before_request(self.process_triggers)
+        self.app.before_request(self.process_events)
         self.app.run(
             host=self.address,
             port=self.port,
