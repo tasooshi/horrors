@@ -30,7 +30,7 @@ class HTTPStatic(services.Service):
             timestamp = time.time()
         return email.utils.formatdate(timestamp, usegmt=True)
 
-    def timestamp(self, request):
+    def timestamp(self, request, sock):
         return str(time.time())
 
     def send_response(self, status_code=200):
@@ -96,7 +96,7 @@ class HTTPStatic(services.Service):
                 await self.send_content(writer, content=self.template_404, status_code=404)
             else:
                 if callable(content):
-                    content = content(self, request)
+                    content = content(self, request, reader._transport._sock)
                 if isinstance(content, bytes):
                     content_type = 'application/octet-stream'
                 else:

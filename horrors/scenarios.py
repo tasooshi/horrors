@@ -57,23 +57,28 @@ class Scenario:
         except asyncio.TimeoutError:
             return False
 
+    async def http_request(self, method, url, headers=None, **kwargs):
+        request_headers = self.http_headers.copy()
+        if headers:
+            request_headers.update(headers)
+        http_kwargs = self.http_kwargs
+        if kwargs:
+            http_kwargs.update(kwargs)
+        async with aiohttp.ClientSession(headers=request_headers) as session:
+            try:
+                async with getattr(session, method)(url, **http_kwargs) as response:
+                    content = await response.content.read()
+                    return {'status': response.status, 'headers': dict(response.raw_headers), 'content': content}
+            except aiohttp.ClientResponseError:
+                logging.info(f'Request failed for {url}')
+
     async def http_get(self, url, headers=None):
-        if headers is None:
-            headers = {}
-        headers.update(self.http_headers)
-        async with aiohttp.ClientSession(headers=headers) as session:
-            async with session.get(url, **self.http_kwargs) as response:
-                return await response.text()
+        return await self.http_request('get', url, headers)
 
     async def http_post(self, url, data=None, headers=None):
         if data is None:
             data = {}
-        if headers is None:
-            headers = {}
-        headers.update(self.http_headers)
-        async with aiohttp.ClientSession(headers=headers) as session:
-            async with session.post(url, data=data, **self.http_kwargs) as response:
-                return await response.text()
+        return await self.http_request('post', url, headers, data=data)
 
     def register(self, service):
         self.services.append(service)
@@ -82,7 +87,7 @@ class Scenario:
         if when is None:
             when = self.scene_index
             self.scene_index += 1
-        logging.debug('Scene {}, event: {}'.format(scene, when))
+        logging.debug(f'Scene {scene}, event: {when}')
         self.scenes.append(self.watch_event(scene, when))
 
     async def main(self):
@@ -99,7 +104,7 @@ class Scenario:
                 tasks.append(server.serve_forever())
         for scene in self.scenes:
             tasks.append(scene())
-        await asyncio.gather(*tasks)
+        await asyncio.gather(*tasks, return_exceptions=True)
 
     def play(self):
         try:

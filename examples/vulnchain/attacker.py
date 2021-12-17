@@ -29,7 +29,7 @@ async def get_new_account(scenario):
     result = await scenario.http_get(
         'http://{rhost}:{rport}/userid/{username}'.format(**scenario.context)
     )
-    scenario.context['userid'] = result
+    scenario.context['userid'] = result['content'].decode()
     return 'userid'
 
 
@@ -83,5 +83,5 @@ if __name__ == "__main__":
     story.add_scene(get_new_account, when='xss')
     story.add_scene(send_xxe, when='userid')
     story.add_scene(reverse_shell, when='xxe')
-    story.set_debug()
+    # story.set_debug()
     story.play()
