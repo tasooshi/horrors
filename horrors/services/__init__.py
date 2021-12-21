@@ -8,7 +8,7 @@ class Service:
     address = None
     port = None
 
-    def __init__(self, scenario, address=None, port=None):
+    def __init__(self, address=None, port=None):
         if address is not None:
             self.address = address
         if port is not None:
@@ -18,8 +18,7 @@ class Service:
         if self.port is None:
             raise RuntimeError('Missing `port` attribute')
         self.events = dict()
-        self.scenario = scenario
-        self.scenario.register(self)
+        self.scenario = None
 
     def add_event(self, scene, when=None):
         if when is None:

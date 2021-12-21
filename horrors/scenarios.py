@@ -24,20 +24,26 @@ class Scenario:
     def set_debug(self):
         logging.init(logging.logging.DEBUG)
 
-    def watch_event(self, func, event):
+    def watch_state(self, obj, state):
         loop = asyncio.get_event_loop()
+        func = obj.task
+        cls_name = obj.__class__.__name__
         @functools.wraps(func)
         async def wrapped(*args, **kwargs):
-            logging.info(f'Scene `{func.__name__}` is waiting for event `{event}`')
+            logging.info(f'Scene `{cls_name}` is waiting for state `{state}`')
             while True:
                 logging.debug('Current state: ' + str(self.state))
-                if self.state == event:
-                    result = await func(self)
-                    logging.debug(f'Executed `{func.__name__}`')
-                    if result:
-                        self.state = result
+                if self.state == state:
+                    try:
+                        await func()
+                    except Exception as exc:
+                        raise Exception(f'Scene `{cls_name}` raised exception {type(exc).__name__} at state `{state}`')
+                    logging.info(f'Executed `{cls_name}`')
+                    if obj.on_finish:
+                        self.state = obj.on_finish
                     else:
                         self.state = self.scene_index + 1
+                    logging.debug(f'The new state is `{self.state}`')
                 else:
                     await asyncio.sleep(1)
         return wrapped
@@ -48,20 +54,53 @@ class Scenario:
     def set_headers(self, headers):
         self.http_headers = headers
 
-    async def job(self, func, *args, **kwargs):
-        func_call = functools.partial(func, *args, **kwargs)
-        loop = asyncio.get_event_loop()
-        future = loop.run_in_executor(None, func_call)
+    def add_service(self, service):
+        service.scenario = self
+        self.services.append(service)
+
+    def add_scene(self, scene_cls, when=None):
+        if when is None:
+            when = self.scene_index
+            self.scene_index += 1
+        self.scenes.append(self.watch_state(scene_cls(self), when))
+        logging.debug(f'Added scene {scene_cls.__name__} on state: {when}')
+
+    async def main(self):
+        self.scene_index = self.SCENE_START
+        tasks = list()
+        for service in self.services:
+            try:
+                server = await asyncio.start_server(service.handler, service.address, service.port)
+            except AttributeError:
+                service.start_server()
+            else:
+                addr = server.sockets[0].getsockname()
+                logging.info(f'Serving `{type(self).__name__}` on {addr[0]}:{addr[1]}')
+                tasks.append(server.serve_forever())
+        for scene in self.scenes:
+            tasks.append(scene())
+        await asyncio.gather(*tasks)
+
+    def play(self):
         try:
-            return await asyncio.wait_for(future, self.TIMEOUT)
-        except asyncio.TimeoutError:
-            return False
+            asyncio.run(self.main())
+        except KeyboardInterrupt:
+            logging.info('Quitting...')
+
+
+class Scene:
+
+    on_finish = None
+
+    def __init__(self, scenario):
+        self.scenario = scenario
+        self.context = scenario.context
 
     async def http_request(self, method, url, headers=None, **kwargs):
-        request_headers = self.http_headers.copy()
+        request_headers = self.scenario.http_headers.copy()
         if headers:
             request_headers.update(headers)
-        http_kwargs = self.http_kwargs
+        http_kwargs = self.scenario.http_kwargs
         if kwargs:
             http_kwargs.update(kwargs)
         async with aiohttp.ClientSession(headers=request_headers) as session:
@@ -80,34 +119,14 @@ class Scenario:
             data = {}
         return await self.http_request('post', url, headers, data=data)
 
-    def register(self, service):
-        self.services.append(service)
-
-    def add_scene(self, scene, when=None):
-        if when is None:
-            when = self.scene_index
-            self.scene_index += 1
-        logging.debug(f'Scene {scene}, event: {when}')
-        self.scenes.append(self.watch_event(scene, when))
-
-    async def main(self):
-        self.scene_index = self.SCENE_START
-        tasks = list()
-        for service in self.services:
-            try:
-                server = await asyncio.start_server(service.handler, service.address, service.port)
-            except AttributeError:
-                service.start_server()
-            else:
-                addr = server.sockets[0].getsockname()
-                logging.info(f'Serving `{type(self).__name__}` on {addr[0]}:{addr[1]}')
-                tasks.append(server.serve_forever())
-        for scene in self.scenes:
-            tasks.append(scene())
-        await asyncio.gather(*tasks, return_exceptions=True)
-
-    def play(self):
+    async def background(self, func, *args, **kwargs):
+        func_call = functools.partial(func, *args, **kwargs)
+        loop = asyncio.get_event_loop()
+        future = loop.run_in_executor(None, func_call)
         try:
-            asyncio.run(self.main())
-        except KeyboardInterrupt:
-            logging.info('Quitting...')
+            return await asyncio.wait_for(future, self.TIMEOUT)
+        except asyncio.TimeoutError:
+            return False
+
+    async def task(self):
+        raise NotImplementedError

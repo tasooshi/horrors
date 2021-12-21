@@ -14,13 +14,13 @@ __all__ = ['HTTPFlask']
 
 class HTTPFlask(services.Service):
 
-    address = '0.0.0.0'
-    port = None
+    address = '127.0.0.1'
+    port = 8888
 
-    def __init__(self, scenario, address=None, port=None, ssl_context=None):
-        self.scenario = scenario
+    def __init__(self, address=None, port=None, ssl_context=None):
+        self.scenario = None
         self.ssl_context = ssl_context
-        super().__init__(scenario, address, port)
+        super().__init__(address, port)
         self.routes = dict()
         self.app = flask.Flask(__name__)
         flask_cors.CORS(self.app)

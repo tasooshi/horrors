@@ -10,7 +10,7 @@ __all__ = ['FTPReader']
 
 class FTPReader(services.Service):
 
-    address = '0.0.0.0'
+    address = '127.0.0.1'
     port = 2121
     banner = 'FTPReader'
 

@@ -6,19 +6,20 @@ import http.server
 import socketserver
 
 
+DEFAULT_RESPONSE = open('victim.html').read()
+
+
 class Victim(http.server.BaseHTTPRequestHandler):
 
-    DEFAULT_RESPONSE = open(os.path.join(os.path.dirname(__file__), 'victim.html')).read()
-
-    def send_content(self, status_code=200, content_type='text/html', content=DEFAULT_RESPONSE, location=None):
+    def send_content(self, status_code=200, content_type='text/html', location=None):
         self.send_response(status_code)
         self.send_header('Content-Type', content_type)
-        self.send_header('Content-Length', str(len(content)))
+        self.send_header('Content-Length', str(len(DEFAULT_RESPONSE)))
         if location:
             self.send_header('Location', location)
         self.send_header('Connection', 'close')
         self.end_headers()
-        self.wfile.write(bytes(content, 'utf-8'))
+        self.wfile.write(bytes(DEFAULT_RESPONSE, 'utf-8'))
         self.wfile.flush()
 
     def do_GET(self):
