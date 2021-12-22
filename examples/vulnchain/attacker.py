@@ -75,7 +75,7 @@ if __name__ == "__main__":
     ftpd = services.FTPReader()
     ftpd.add_event('xxe', when=events.DataMatch(r'.+SecretKey=(.+);', in_context='secret'))
 
-    story = scenarios.Scenario(**context)
+    story = scenarios.Scenario(keep_running=False, **context)
     # story.set_proxy('http://127.0.0.1:8080')  # In case you'd like to watch it live
     story.add_service(httpd)
     story.add_service(ftpd)

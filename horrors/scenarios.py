@@ -11,11 +11,13 @@ class Scenario:
     TIMEOUT = 5
     SCENE_START = 1
 
-    def __init__(self, **context):
+    def __init__(self, keep_running=True, **context):
+        self.keep_running = keep_running
         self.context = context
         self.scenes = list()
         self.services = list()
         self.scene_index = self.SCENE_START
+        self.scene_last = None
         self.state = self.scene_index
         self.http_kwargs = dict()
         self.http_headers = dict()
@@ -39,6 +41,8 @@ class Scenario:
                     except Exception as exc:
                         raise Exception(f'Scene `{cls_name}` raised exception {type(exc).__name__} at state `{state}`')
                     logging.info(f'Executed `{cls_name}`')
+                    if self.state == self.scene_last and not self.keep_running:
+                        raise asyncio.CancelledError
                     if obj.on_finish:
                         self.state = obj.on_finish
                     else:
@@ -62,10 +66,11 @@ class Scenario:
         if when is None:
             when = self.scene_index
             self.scene_index += 1
-        self.scenes.append(self.watch_state(scene_cls(self), when))
+        self.scenes.append((self.watch_state(scene_cls(self), when), when))
         logging.debug(f'Added scene {scene_cls.__name__} on state: {when}')
 
     async def main(self):
+        self.scene_last = self.scenes[-1][1]
         self.scene_index = self.SCENE_START
         tasks = list()
         for service in self.services:
@@ -78,8 +83,11 @@ class Scenario:
                 logging.info(f'Serving `{type(self).__name__}` on {addr[0]}:{addr[1]}')
                 tasks.append(server.serve_forever())
         for scene in self.scenes:
-            tasks.append(scene())
-        await asyncio.gather(*tasks)
+            tasks.append(scene[0]())
+        try:
+            await asyncio.gather(*tasks)
+        except asyncio.CancelledError:
+            logging.info('End of story')
 
     def play(self):
         try:
