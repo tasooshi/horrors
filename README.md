@@ -22,7 +22,7 @@ context = {
 
 story = scenarios.Scenario(**context)
 story.set_debug()
-story.set_proxy('http': 'http://127.0.0.1:8080')
+story.set_proxy('http://127.0.0.1:8080')
 
 ftpd = services.FTPReader(story)
 ftpd.add_event('xxe', when=events.DataMatch(r'.+SecretKey=(.+);', bucket='secret'))
