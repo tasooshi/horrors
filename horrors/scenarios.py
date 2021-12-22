@@ -1,31 +1,39 @@
 import asyncio
+import concurrent.futures
 import functools
+import threading
 
 import aiohttp
+from sanic.server import async_server
 
-from horrors import logging
+from horrors import (
+    logging,
+    services,
+)
 
 
 class Scenario:
 
-    TIMEOUT = 5
-    SCENE_START = 1
-
-    def __init__(self, keep_running=True, **context):
-        self.keep_running = keep_running
+    def __init__(self, context=None, keep_running=True, interval=1, http_headers=None, http_proxy=None, debug=False, scene_start=1):
         self.context = context
+        self.keep_running = keep_running
+        self.interval = interval
+        self.http_headers = dict() if http_headers is None else http_headers
+        self.http_kwargs = dict()
+        if http_proxy:
+            self.http_kwargs['proxy'] = http_proxy
+        self.debug = debug
+        if debug:
+            logging.init(logging.logging.DEBUG)
+        else:
+            logging.init(logging.logging.INFO)
         self.scenes = list()
         self.services = list()
-        self.scene_index = self.SCENE_START
+        self.tasks = list()
+        self.scene_start = scene_start
+        self.scene_index = self.scene_start
         self.scene_last = None
         self.state = self.scene_index
-        self.http_kwargs = dict()
-        self.http_headers = dict()
-        self.tasks = list()
-        logging.init(logging.logging.INFO)
-
-    def set_debug(self):
-        logging.init(logging.logging.DEBUG)
 
     def watch_state(self, obj):
         func = obj.task
@@ -44,21 +52,15 @@ class Scenario:
                     logging.info(f'Executed `{cls_name}`')
                     if self.state == self.scene_last and not self.keep_running:
                         raise asyncio.CancelledError
-                    if obj.on_finish:
-                        self.state = obj.on_finish
+                    if obj.next_event:
+                        self.state = obj.next_event
                     else:
                         self.scene_index += 1
                         self.state = self.scene_index
                     logging.debug(f'The new state is `{self.state}`')
                 else:
-                    await asyncio.sleep(1)
+                    await asyncio.sleep(self.interval)
         return wrapped
-
-    def set_proxy(self, proxy):
-        self.http_kwargs['proxy'] = proxy
-
-    def set_headers(self, headers):
-        self.http_headers = headers
 
     def add_service(self, service):
         service.scenario = self
@@ -77,17 +79,20 @@ class Scenario:
         except IndexError: 
             # NOTE: Should throw exception if that ever happens due to self.scene_last == None by default
             pass
-        self.scene_index = self.SCENE_START
+        self.scene_index = self.scene_start
         self.tasks = list()
         for service in self.services:
-            try:
+            server = None
+            if hasattr(service, 'handler'):
                 server = await asyncio.start_server(service.handler, service.address, service.port)
-            except AttributeError:
-                service.start_server()
-            else:
-                addr = server.sockets[0].getsockname()
-                logging.info(f'Serving `{type(self).__name__}` on {addr[0]}:{addr[1]}')
+            elif issubclass(type(service), services.HTTPSanic):
+                server = await service.start_server()
+                await server.startup()
+            if server:
+                logging.info(f'Serving `{type(service).__name__}` on {service.address}:{service.port}')
                 self.tasks.append(asyncio.create_task(server.serve_forever()))
+            else:
+                logging.error(f'Failed starting `{type(service).__name__}` on {service.address}:{service.port}')
         for scene in self.scenes:
             self.tasks.append(asyncio.create_task(scene[0]()))
         try:
@@ -108,12 +113,17 @@ class Scenario:
 
 class Scene:
 
-    on_finish = None
+    next_event = None
 
-    def __init__(self, scenario, when):
+    def __init__(self, scenario, when, timeout=5):
         self.when = when
         self.scenario = scenario
         self.context = scenario.context
+        self.timeout = timeout
+
+    def background(self, func, *args, **kwargs):
+        thread = threading.Thread(None, func, args=args, kwargs=kwargs, daemon=True)
+        thread.start()
 
     async def http_request(self, method, url, headers=None, **kwargs):
         request_headers = self.scenario.http_headers.copy()
@@ -137,15 +147,6 @@ class Scene:
         if data is None:
             data = {}
         return await self.http_request('post', url, headers, data=data)
-
-    async def background(self, func, *args, **kwargs):
-        func_call = functools.partial(func, *args, **kwargs)
-        loop = asyncio.get_event_loop()
-        future = loop.run_in_executor(None, func_call)
-        try:
-            return await asyncio.wait_for(future, self.TIMEOUT)
-        except asyncio.TimeoutError:
-            return False
 
     async def task(self):
         raise NotImplementedError

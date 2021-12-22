@@ -7,6 +7,7 @@ class Service:
 
     address = None
     port = None
+    banner = 'Service'
 
     def __init__(self, address=None, port=None):
         if address is not None:

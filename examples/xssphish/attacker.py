@@ -15,5 +15,4 @@ if __name__ == "__main__":
     
     story = scenarios.Scenario()
     story.add_service(httpd)
-    # story.set_debug()
     story.play()

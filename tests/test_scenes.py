@@ -26,7 +26,7 @@ def test_scene_context():
         'thost': TARGET_HOST,
         'tport': TARGET_PORT,
     }
-    story = scenarios.Scenario(keep_running=False, **context)
+    story = scenarios.Scenario(keep_running=False, context=context)
     story.add_scene(TestScene)
     story.play()
 
@@ -41,7 +41,7 @@ def test_scene_order():
     context = {
         'order': list(),
     }
-    story = scenarios.Scenario(keep_running=False, **context)
+    story = scenarios.Scenario(keep_running=False, context=context)
     story.add_scene(TestScene)
     story.add_scene(TestScene)
     story.add_scene(TestScene)
@@ -59,20 +59,20 @@ def test_scene_order_states():
 
     class TestSceneOne(TestScene):
 
-        on_finish = 'two'
+        next_event = 'two'
 
     class TestSceneTwo(TestScene):
 
-        on_finish = 'three'
+        next_event = 'three'
 
     class TestSceneThree(TestScene):
 
-        on_finish = 'four'
+        next_event = 'four'
 
     context = {
         'order': list(),
     }
-    story = scenarios.Scenario(keep_running=False, **context)
+    story = scenarios.Scenario(keep_running=False, context=context)
     story.add_scene(TestSceneOne)
     story.add_scene(TestSceneTwo, when='two')
     story.add_scene(TestSceneThree, when='three')
@@ -93,7 +93,7 @@ def test_scenario_stop():
     context = {
         'finished': list(),
     }
-    story = scenarios.Scenario(keep_running=False, **context)
+    story = scenarios.Scenario(keep_running=False, context=context)
     story.add_scene(TestScene)
     story.add_scene(TestScene)
     story.add_scene(TestScene)

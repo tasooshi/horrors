@@ -19,6 +19,10 @@ def debug(msg):
     logger.debug(msg)
 
 
+def error(msg):
+    logger.error(msg)
+
+
 def init(loglevel):
     handler.setLevel(loglevel)
     logger.setLevel(loglevel)

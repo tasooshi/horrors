@@ -27,8 +27,7 @@ setup(
     install_requires=(
         'aiohttp==3.8.1',
         'beautifulsoup4==4.10.0',
-        'Flask==2.0.2',
-        'Flask-Cors==3.0.10',
+        'sanic==21.9.3',
         'tinydb==4.5.2',
     ),
     classifiers=[
