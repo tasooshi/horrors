@@ -26,9 +26,9 @@ class Scenario:
     def set_debug(self):
         logging.init(logging.logging.DEBUG)
 
-    def watch_state(self, obj, state):
-        loop = asyncio.get_event_loop()
+    def watch_state(self, obj):
         func = obj.task
+        state = obj.when
         cls_name = obj.__class__.__name__
         @functools.wraps(func)
         async def wrapped(*args, **kwargs):
@@ -46,7 +46,8 @@ class Scenario:
                     if obj.on_finish:
                         self.state = obj.on_finish
                     else:
-                        self.state = self.scene_index + 1
+                        self.scene_index += 1
+                        self.state = self.scene_index
                     logging.debug(f'The new state is `{self.state}`')
                 else:
                     await asyncio.sleep(1)
@@ -66,7 +67,7 @@ class Scenario:
         if when is None:
             when = self.scene_index
             self.scene_index += 1
-        self.scenes.append((self.watch_state(scene_cls(self), when), when))
+        self.scenes.append((self.watch_state(scene_cls(self, when)), when))
         logging.debug(f'Added scene {scene_cls.__name__} on state: {when}')
 
     async def main(self):
@@ -104,7 +105,8 @@ class Scene:
 
     on_finish = None
 
-    def __init__(self, scenario):
+    def __init__(self, scenario, when):
+        self.when = when
         self.scenario = scenario
         self.context = scenario.context
 
