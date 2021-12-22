@@ -70,7 +70,11 @@ class Scenario:
         logging.debug(f'Added scene {scene_cls.__name__} on state: {when}')
 
     async def main(self):
-        self.scene_last = self.scenes[-1][1]
+        try:
+            self.scene_last = self.scenes[-1][1]
+        except IndexError: 
+            # NOTE: Should throw exception if that ever happens due to self.scene_last == None by default
+            pass
         self.scene_index = self.SCENE_START
         tasks = list()
         for service in self.services:
