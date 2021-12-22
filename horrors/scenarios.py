@@ -21,6 +21,7 @@ class Scenario:
         self.state = self.scene_index
         self.http_kwargs = dict()
         self.http_headers = dict()
+        self.tasks = list()
         logging.init(logging.logging.INFO)
 
     def set_debug(self):
@@ -77,7 +78,7 @@ class Scenario:
             # NOTE: Should throw exception if that ever happens due to self.scene_last == None by default
             pass
         self.scene_index = self.SCENE_START
-        tasks = list()
+        self.tasks = list()
         for service in self.services:
             try:
                 server = await asyncio.start_server(service.handler, service.address, service.port)
@@ -86,11 +87,11 @@ class Scenario:
             else:
                 addr = server.sockets[0].getsockname()
                 logging.info(f'Serving `{type(self).__name__}` on {addr[0]}:{addr[1]}')
-                tasks.append(server.serve_forever())
+                self.tasks.append(asyncio.create_task(server.serve_forever()))
         for scene in self.scenes:
-            tasks.append(scene[0]())
+            self.tasks.append(asyncio.create_task(scene[0]()))
         try:
-            await asyncio.gather(*tasks)
+            await asyncio.gather(*self.tasks)
         except asyncio.CancelledError:
             logging.info('End of story')
 
@@ -99,6 +100,10 @@ class Scenario:
             asyncio.run(self.main())
         except KeyboardInterrupt:
             logging.info('Quitting...')
+
+    def stop(self):
+        for task in self.tasks:
+            task.cancel()
 
 
 class Scene:

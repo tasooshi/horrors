@@ -28,7 +28,6 @@ def test_scene_context():
     }
     story = scenarios.Scenario(keep_running=False, **context)
     story.add_scene(TestScene)
-    story.set_debug()
     story.play()
 
 
@@ -47,7 +46,6 @@ def test_scene_order():
     story.add_scene(TestScene)
     story.add_scene(TestScene)
     story.add_scene(TestScene)
-    story.set_debug()
     story.play()
     assert context['order'] == [1, 2, 3, 4]
 
@@ -60,7 +58,7 @@ def test_scene_order_states():
             self.context['order'].append(self.when)
 
     class TestSceneOne(TestScene):
-        
+
         on_finish = 'two'
 
     class TestSceneTwo(TestScene):
@@ -79,6 +77,26 @@ def test_scene_order_states():
     story.add_scene(TestSceneTwo, when='two')
     story.add_scene(TestSceneThree, when='three')
     story.add_scene(TestScene, when='four')
-    story.set_debug()
     story.play()
     assert context['order'] == [1, 'two', 'three', 'four']
+
+
+def test_scenario_stop():
+
+    class TestScene(scenarios.Scene):
+
+        async def task(self):
+            self.context['finished'].append(self.when)
+            if self.when == 3:
+                self.scenario.stop()
+
+    context = {
+        'finished': list(),
+    }
+    story = scenarios.Scenario(keep_running=False, **context)
+    story.add_scene(TestScene)
+    story.add_scene(TestScene)
+    story.add_scene(TestScene)
+    story.add_scene(TestScene)
+    story.play()
+    assert context['finished'] == [1, 2, 3]
