@@ -31,14 +31,14 @@ class HttpGet(scenarios.Scene):
         os.system('sleep 10')
 
     async def task(self):
-        self.background(self.sleep_a_bit)
-        self.background(self.touch_tmp)
+        self.thread_exec(self.sleep_a_bit)
+        self.thread_exec(self.touch_tmp)
         await self.http_get(
             'http://127.0.0.1:8888/collect/?test=http_background'
         )
 
 
-def test_http_background():
+def test_http_thread_exec():
     context = {
         'temp_file': tempfile.NamedTemporaryFile(delete=False)
     }

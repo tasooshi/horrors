@@ -12,6 +12,39 @@ from horrors import (
 )
 
 
+class Queue:
+
+    def __init__(self, scenario, workers_no):
+        self.scenario = scenario
+        self._queue = asyncio.Queue()
+        self._workers = list()
+        for i in range(workers_no):
+            worker = asyncio.create_task(self.worker(f'Worker-{i}'))
+            self._workers.append(worker)
+
+    async def worker(self, name):
+        logging.debug(f'Spawned `{name}`')
+        while True:
+            scene = await self._queue.get()
+            logging.debug(f'`{name}` is executing scene `{scene}` with {scene.args} {scene.kwargs}')
+            await scene._task(*scene.args, **scene.kwargs)
+            self._queue.task_done()
+
+    def add(self, scene_cls, args=None, kwargs=None):
+        self._queue.put_nowait(scene_cls(self.scenario, args, kwargs))
+
+    def is_populated(self):
+        return not self._queue.empty()
+
+    async def start(self):
+        await self._queue.join()
+
+    async def stop(self):
+        for worker in self._workers:
+            worker.cancel()
+        await asyncio.gather(*self._workers, return_exceptions=True)        
+
+
 class Scenario:
 
     def __init__(self, context=None, keep_running=True, interval=1, http_headers=None, http_proxy=None, debug=False, scene_start=1):
@@ -36,7 +69,7 @@ class Scenario:
         self.state = self.scene_index
 
     def watch_state(self, obj):
-        func = obj.task
+        func = obj._task
         state = obj.when
         cls_name = obj.__class__.__name__
         @functools.wraps(func)
@@ -46,7 +79,9 @@ class Scenario:
                 logging.debug('Current state: ' + str(self.state))
                 if self.state == state:
                     try:
-                        await func()
+                        await func(*obj.args, **obj.kwargs)
+                        if obj.queue.is_populated:
+                            await obj.queue.start()
                     except Exception as exc:
                         raise Exception(f'Scene `{cls_name}` raised exception {type(exc).__name__} at state `{state}`')
                     logging.info(f'Executed `{cls_name}`')
@@ -66,11 +101,11 @@ class Scenario:
         service.scenario = self
         self.services.append(service)
 
-    def add_scene(self, scene_cls, when=None):
+    def add_scene(self, scene_cls, args=None, kwargs=None, when=None):
         if when is None:
             when = self.scene_index
             self.scene_index += 1
-        self.scenes.append((self.watch_state(scene_cls(self, when)), when))
+        self.scenes.append((self.watch_state(scene_cls(self, args, kwargs, when)), when))
         logging.debug(f'Added scene {scene_cls.__name__} on state: {when}')
 
     async def main(self):
@@ -115,13 +150,17 @@ class Scene:
 
     next_event = None
 
-    def __init__(self, scenario, when, timeout=5):
-        self.when = when
+    def __init__(self, scenario, args=None, kwargs=None, when=None, timeout=5, workers_no=4):
         self.scenario = scenario
+        self.args = tuple() if not args else args
+        self.kwargs = dict() if not kwargs else kwargs
+        self.when = when
         self.context = scenario.context
         self.timeout = timeout
+        self.workers_no = workers_no
+        self.queue = None
 
-    def background(self, func, *args, **kwargs):
+    def thread_exec(self, func, *args, **kwargs):
         thread = threading.Thread(None, func, args=args, kwargs=kwargs, daemon=True)
         thread.start()
 
@@ -148,5 +187,9 @@ class Scene:
             data = {}
         return await self.http_request('post', url, headers, data=data)
 
-    async def task(self):
+    async def _task(self, *args, **kwargs):
+        self.queue = Queue(self.scenario, self.workers_no)
+        await self.task(*args, **kwargs)
+
+    async def task(self, *args, **kwargs):
         raise NotImplementedError
