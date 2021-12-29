@@ -36,10 +36,10 @@ class SendRequests(scenarios.Scene):
 
     async def task(self):
         target_404 = f'http://127.0.0.1:8888/not_found'
-        self.queue.add(HttpGet, args=(target_404,), kwargs={'headers': self.context['headers']})
+        self.queue.add(HttpGet, target_404, headers=self.context['headers'])
         for idx in range(10):
             target = f'http://127.0.0.1:8888/collect?task_no={idx}'
-            self.queue.add(HttpGet, args=(target,), kwargs={'headers': self.context['headers']})
+            self.queue.add(HttpGet, target, headers=self.context['headers'])
 
 
 def test_queues():

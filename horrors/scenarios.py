@@ -30,7 +30,7 @@ class Queue:
             await scene._task(*scene.args, **scene.kwargs)
             self._queue.task_done()
 
-    def add(self, scene_cls, args=None, kwargs=None):
+    def add(self, scene_cls, *args, **kwargs):
         self._queue.put_nowait(scene_cls(self.scenario, args, kwargs))
 
     def is_populated(self):
