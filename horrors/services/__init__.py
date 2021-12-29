@@ -1,8 +1,3 @@
-import asyncio
-
-from horrors import logging
-
-
 class Service:
 
     address = None

@@ -1,10 +1,8 @@
 import asyncio
-import concurrent.futures
 import functools
 import threading
 
 import aiohttp
-from sanic.server import async_server
 
 from horrors import (
     logging,
@@ -42,7 +40,7 @@ class Queue:
     async def stop(self):
         for worker in self._workers:
             worker.cancel()
-        await asyncio.gather(*self._workers, return_exceptions=True)        
+        await asyncio.gather(*self._workers, return_exceptions=True)
 
 
 class Scenario:
@@ -72,6 +70,7 @@ class Scenario:
         func = obj._task
         state = obj.when
         cls_name = obj.__class__.__name__
+
         @functools.wraps(func)
         async def wrapped(*args, **kwargs):
             logging.info(f'Scene `{cls_name}` is waiting for state `{state}`')
@@ -111,7 +110,7 @@ class Scenario:
     async def main(self):
         try:
             self.scene_last = self.scenes[-1][1]
-        except IndexError: 
+        except IndexError:
             # NOTE: Should throw exception if that ever happens due to self.scene_last == None by default
             pass
         self.scene_index = self.scene_start

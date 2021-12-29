@@ -97,8 +97,4 @@ class HTTPStatic(services.Service):
             else:
                 if callable(content):
                     content = content(self, request, reader._transport._sock)
-                if isinstance(content, bytes):
-                    content_type = 'application/octet-stream'
-                else:
-                    content_type = 'text/html'
                 await self.send_content(writer, content)

