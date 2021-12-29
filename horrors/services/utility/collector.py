@@ -25,6 +25,7 @@ class HTTPCollector(http.HTTPSanic):
         body = dict(request.form)
         if body:
             doc['body'] = body
+        doc['url'] = request.url
         doc['headers'] = dict(request.headers)
         doc['socket'] = {'ip': request.socket[0], 'port': request.socket[1]}
         self.db.insert(doc)
