@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #######################################################################
-# License: GNU General Public License v3.0                            #
+# License: MIT License                                                #
 # Homepage: https://github.com/tasooshi/horrors/                      #
 # Version: 0.5                                                        #
 #######################################################################
@@ -22,7 +22,7 @@ setup(
     author='tasooshi',
     author_email='tasooshi@pm.me',
     description='A micro-framework for writing attack scenarios starring multiple vulnerabilities',
-    license='GNU General Public License v3.0',
+    license='MIT License',
     url='https://github.com/tasooshi/horrors/',
     install_requires=(
         'aiohttp==3.8.1',
@@ -33,7 +33,7 @@ setup(
     classifiers=[
         'Development Status :: 4 - Beta',
         'Topic :: Utilities',
-        'License :: OSI Approved :: GNU General Public License v3 (GPLv3)',
+        'License :: OSI Approved :: MIT License',
         'Programming Language :: Python :: 3.9',
     ]
 )

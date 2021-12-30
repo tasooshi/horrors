@@ -1,8 +1,6 @@
 import os
-import tempfile
 
 from sanic import Sanic
-import pytest
 
 from horrors import (
     logging,

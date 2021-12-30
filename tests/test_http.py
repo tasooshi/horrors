@@ -1,7 +1,6 @@
 import os
 
 from sanic import Sanic
-import pytest
 
 from horrors import (
     scenarios,

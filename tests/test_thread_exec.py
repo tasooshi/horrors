@@ -2,7 +2,6 @@ import os
 import tempfile
 
 from sanic import Sanic
-import pytest
 
 from horrors import (
     logging,
@@ -60,4 +59,3 @@ def test_http_thread_exec():
         contents = fil.read()
         assert 'Temporary' in contents
     os.remove(temp_path)
-

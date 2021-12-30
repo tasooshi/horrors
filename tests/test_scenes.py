@@ -1,5 +1,3 @@
-import pytest
-
 from horrors import scenarios
 
 
