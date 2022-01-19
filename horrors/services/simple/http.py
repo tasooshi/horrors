@@ -91,10 +91,24 @@ class HTTPStatic(services.Service):
         else:
             self.process(events.PathContains, path)
             try:
-                content = self.routes[path]
+                path = path.split('/')
+                params = dict()
+                for route in self.routes.keys():
+                    route = route.split('/')
+                    if len(route) == len(path):
+                        for i in range(len(route)):
+                            if route[i].startswith('<') and route[i].endswith('>'):
+                                params[route[i][1:-1]] = path[i]
+                                continue
+                            if route[i] != path[i]:
+                                raise KeyError
+                        content = self.routes['/'.join(route)]
+                        break
+                if 'content' not in locals():
+                    raise KeyError
             except KeyError:
                 await self.send_content(writer, content=self.template_404, status_code=404)
             else:
                 if callable(content):
-                    content = content(self, request, reader._transport._sock)
+                    content = content(self, request, params, reader._transport._sock)
                 await self.send_content(writer, content)
