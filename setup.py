@@ -27,8 +27,8 @@ setup(
     install_requires=(
         'aiohttp==3.8.1',
         'beautifulsoup4==4.10.0',
-        'sanic==21.9.3',
-        'tinydb==4.5.2',
+        'sanic==21.12.1',
+        'tinydb==4.6.1',
     ),
     classifiers=[
         'Development Status :: 4 - Beta',

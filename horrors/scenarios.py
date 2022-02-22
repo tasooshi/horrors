@@ -41,6 +41,7 @@ class Queue:
         for worker in self._workers:
             worker.cancel()
         await asyncio.gather(*self._workers, return_exceptions=True)
+        self._workers = None
 
 
 class Scenario:
